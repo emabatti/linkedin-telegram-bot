@@ -17,7 +17,7 @@ async def main():
     bot = telegram.Bot(config.api_token)  
     async def send_message(job: Job = Job()):
         text = f'<b><a href="{job.link}">{job.title}</a></b>'
-        await bot.send_message(text=text, chat_id=85651383, parse_mode="HTML")
+        await bot.send_message(text=text, chat_id=config.chat_id, parse_mode="HTML")
     
     # preparing driver to allow for js loading before parsing the page
     options = Options()
