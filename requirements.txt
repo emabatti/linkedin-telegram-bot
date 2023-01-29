@@ -1,4 +1,4 @@
 beautifulsoup4
 lxml
-selenium
+requests-html
 python-telegram-bot

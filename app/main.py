@@ -1,6 +1,5 @@
 from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.firefox.options import Options
+from requests_html import HTMLSession
 import config
 import asyncio
 import telegram
@@ -14,20 +13,19 @@ class Job:
 
 
 async def main():
-    bot = telegram.Bot(config.api_token)  
+    bot = telegram.Bot(config.api_token) 
+    session = HTMLSession()
+     
     async def send_message(job: Job = Job()):
         text = f'<b><a href="{job.link}">{job.title}</a></b>'
         await bot.send_message(text=text, chat_id=config.chat_id, parse_mode="HTML")
     
     # preparing driver to allow for js loading before parsing the page
-    options = Options()
-    options.add_argument('-headless')
-    browser = webdriver.Firefox(options=options)
     while True:
         jobs = []
         for url in config.urls:
-            browser.get(url)
-            soup = BeautifulSoup(browser.page_source,"lxml")
+            page = session.get(url)
+            soup = BeautifulSoup(page.text,"lxml")
 
             listings = soup.select('#main-content section > ul li')
 
