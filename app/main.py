@@ -42,7 +42,7 @@ async def main():
                 
         for job in jobs:
             await send_message(job)
-        time.sleep(10)
+        time.sleep(config.seconds)
 
 if __name__=="__main__":
     asyncio.run(main())
