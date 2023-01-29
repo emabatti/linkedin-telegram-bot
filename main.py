@@ -4,6 +4,7 @@ from selenium.webdriver.firefox.options import Options
 import config
 import asyncio
 import telegram
+import time
 
 class Job:
     title: str
@@ -22,27 +23,26 @@ async def main():
     options = Options()
     options.add_argument('-headless')
     browser = webdriver.Firefox(options=options)
-    
-    jobs = []
-    for url in config.urls:
-        browser.get(url)
-        soup = BeautifulSoup(browser.page_source,"lxml")
+    while True:
+        jobs = []
+        for url in config.urls:
+            browser.get(url)
+            soup = BeautifulSoup(browser.page_source,"lxml")
 
-        listings = soup.select('#main-content section > ul li')
+            listings = soup.select('#main-content section > ul li')
 
-        if listings:
-            for listing in listings:
-                job = Job()
-                job.title = listing.h3.string.strip()
-                job.company = listing.h4.a.string.strip()
-                job.time_ago = listing.time.string.strip()
-                job.link = listing.a['href'].strip()
-                jobs.append(job)
-            
-    for job in jobs:
-        await send_message(job)
-
-    browser.quit()
+            if listings:
+                for listing in listings:
+                    job = Job()
+                    job.title = listing.h3.string.strip()
+                    job.company = listing.h4.a.string.strip()
+                    job.time_ago = listing.time.string.strip()
+                    job.link = listing.a['href'].strip()
+                    jobs.append(job)
+                
+        for job in jobs:
+            await send_message(job)
+        time.sleep(10)
 
 if __name__=="__main__":
     asyncio.run(main())
