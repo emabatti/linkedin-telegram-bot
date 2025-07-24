@@ -1,53 +1,18 @@
+import random
 from bs4 import BeautifulSoup
 from requests_html import HTMLSession
+from human_behaviour import human_sleep, human_type
 import config
 import asyncio
 import telegram
 import time
 from selenium import webdriver
-from selenium.webdriver.firefox.options import Options  # Firefox options
+from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.firefox.options import Options
-from selenium.common.exceptions import UnexpectedAlertPresentException
-
-class Job:
-    title: str
-    company: str
-    time_ago: str
-    link: str
-
-
-async def old_main():
-    bot = telegram.Bot(config.api_token) 
-    session = HTMLSession()
-     
-    async def send_message(job: Job = Job()):
-        text = f'<b><a href="{job.link}">{job.title}</a></b>'
-        await bot.send_message(text=text, chat_id=config.chat_id, parse_mode="HTML")
-    
-    # preparing driver to allow for js loading before parsing the page
-    while True:
-        jobs = []
-        for url in config.urls:
-            page = session.get(url)
-            soup = BeautifulSoup(page.text,"lxml")
-
-            listings = soup.select('#main-content section > ul li')
-
-            if listings:
-                for listing in listings:
-                    job = Job()
-                    job.title = listing.h3.string.strip()
-                    job.company = listing.h4.a.string.strip()
-                    job.time_ago = listing.time.string.strip()
-                    job.link = listing.a['href'].strip()
-                    jobs.append(job)
-                
-        for job in jobs:
-            await send_message(job)
-        time.sleep(config.seconds)
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 
 async def main():
     # Setup Firefox with options
@@ -59,6 +24,14 @@ async def main():
     firefox_options.set_preference("privacy.resistFingerprinting", True)    # Reduces fingerprinting
     firefox_options.set_preference("general.platform.override", "Win32")    # Mimics normal platform
     firefox_options.set_preference("dom.webnotifications.enabled", False)   # Disables web push popups
+    firefox_options.set_preference("dom.webaudio.enabled", False)
+    firefox_options.set_preference("media.peerconnection.enabled", False)
+    firefox_options.set_preference("webgl.disabled", True)
+    firefox_options.add_argument("--width=1280")
+    firefox_options.add_argument("--height=800")
+
+
+    #firefox_options.set_preference("useAutomationExtension", False)
 
     # Optional: Override user-agent to appear more human
     firefox_options.set_preference("general.useragent.override", 
@@ -68,9 +41,12 @@ async def main():
 
     # Initialize Firefox WebDriver
     driver = webdriver.Firefox(options=firefox_options)
+    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    actions = ActionChains(driver)
 
     # Navigate to the login page
-    driver.get("https://www.linkedin.com/jobs")
+    human_sleep(2)
+    driver.get("https://www.linkedin.com/jobs/search/?currentJobId=4266647668&distance=25&f_WT=3%2C1&geoId=101100529&keywords=Sviluppatore%20back-end&origin=JOBS_HOME_SEARCH_CARDS&position=38&pageNum=0")
 
     try:
         alert = driver.switch_to.alert
@@ -79,43 +55,82 @@ async def main():
     except:
         pass
 
-    wait = WebDriverWait(driver, 20)
+    wait = WebDriverWait(driver, 10)
     
     print("Searching for modal...")
     # Wait for the modal with the right heading to appear
     modal = wait.until(EC.presence_of_element_located(
         (By.XPATH, "//div[contains(@class, 'sign-in-modal')]//h2[contains(text(), 'Sign in to view more jobs')]")
     ))
+    human_sleep(5)
 
     try:
         print("Searching for button...")
         # Once modal is found, find the button inside it
-        sign_in_button = wait.until(EC.element_to_be_clickable((
+        # Wait until it's present (skip clickable here)
+        wait.until(EC.presence_of_element_located((
             By.XPATH,
             "//div[contains(@class, 'sign-in-modal')]//button[contains(@class, 'sign-in-modal__outlet-btn') and contains(., 'Sign in')]"
         )))
+        print("Button found. Relocating...")
+        # Then re-locate just before clicking
+        sign_in_button = driver.find_element(By.XPATH,
+            "//div[contains(@class, 'sign-in-modal')]//button[contains(@class, 'sign-in-modal__outlet-btn') and contains(., 'Sign in')]"
+        )
     except:
         print("Button not found. Retrying...")
-        # Once modal is found, find the button inside it
         sign_in_button = wait.until(EC.element_to_be_clickable((
             By.XPATH,
             "//div[contains(@class, 'sign-in-modal')]//button[contains(@class, 'sign-in-modal__outlet-btn') and contains(., 'Sign in')]"
         )))
 
-    time.sleep(5)
-    print("Clicking button...")     
+    human_sleep(5)
+    print("Clicking button...")
+    # Scroll and click using JS to bypass hidden overlays
+    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", sign_in_button)
     driver.execute_script("arguments[0].click();", sign_in_button)
 
+    human_sleep(2)
+
     # Fill in username and password
-    username_field = wait.until(EC.presence_of_element_located((By.ID, "base-sign-in-modal_session_key")))
-    username_field.clear()
-    username_field.send_keys("your_username")
-
-    time.sleep(2)
-
-    password_field = driver.find_element(By.ID, "base-sign-in-modal_session_password")
-    password_field.clear()
-    password_field.send_keys("your_password")
+    try:
+        print("Filling credentials (1)...")
+        username_field = wait.until(EC.visibility_of_element_located((By.ID, "public_jobs_ai_button_contextual_sign_in_info_modal_sign-in-modal_session_key")))
+        # Scroll it into view using JS
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", username_field)
+        human_sleep(0.5)  # Slight pause to let things settle
+        actions.move_to_element(username_field).pause(0.5).perform()
+        username_field.click()
+        human_type(username_field, "your_username")
+        human_sleep(2)
+        password_field = driver.find_element(By.ID, "public_jobs_ai_button_contextual_sign_in_info_modal_sign-in-modal_session_password")
+        # Scroll it into view using JS
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", password_field)
+        human_sleep(0.5)  # Slight pause to let things settle
+        actions.move_to_element(password_field).pause(0.5).perform()
+        password_field.click()
+        human_type(password_field, "your_password")
+        password_field.send_keys(Keys.RETURN)
+    except:
+        print("Filling credentials (2)...")
+        username_field = wait.until(EC.visibility_of_element_located((By.ID, "base-sign-in-modal_session_key")))
+        # Scroll it into view using JS
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", username_field)
+        human_sleep(0.5)  # Slight pause to let things settle
+        actions.move_to_element(username_field).pause(0.5).perform()
+        username_field.click()
+        human_type(username_field, "your_username")
+        human_sleep(2)
+        password_field = driver.find_element(By.ID, "base-sign-in-modal_session_password")
+        # Scroll it into view using JS
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", password_field)
+        human_sleep(0.5)  # Slight pause to let things settle
+        actions.move_to_element(password_field).pause(0.5).perform()
+        password_field.click()
+        human_type(password_field, "your_password")
+        password_field.send_keys(Keys.RETURN)
+    
+    driver.quit()
 
 if __name__=="__main__":
     asyncio.run(main())
