@@ -101,7 +101,7 @@ async def main():
         human_sleep(0.5)  # Slight pause to let things settle
         actions.move_to_element(username_field).pause(0.5).perform()
         username_field.click()
-        human_type(username_field, "your_username")
+        human_type(username_field, config.username)
         human_sleep(2)
         password_field = driver.find_element(By.ID, "public_jobs_ai_button_contextual_sign_in_info_modal_sign-in-modal_session_password")
         # Scroll it into view using JS
@@ -109,7 +109,7 @@ async def main():
         human_sleep(0.5)  # Slight pause to let things settle
         actions.move_to_element(password_field).pause(0.5).perform()
         password_field.click()
-        human_type(password_field, "your_password")
+        human_type(password_field, config.password)
         password_field.send_keys(Keys.RETURN)
     except:
         print("Filling credentials (2)...")
@@ -119,7 +119,7 @@ async def main():
         human_sleep(0.5)  # Slight pause to let things settle
         actions.move_to_element(username_field).pause(0.5).perform()
         username_field.click()
-        human_type(username_field, "your_username")
+        human_type(username_field, config.username)
         human_sleep(2)
         password_field = driver.find_element(By.ID, "base-sign-in-modal_session_password")
         # Scroll it into view using JS
@@ -127,10 +127,10 @@ async def main():
         human_sleep(0.5)  # Slight pause to let things settle
         actions.move_to_element(password_field).pause(0.5).perform()
         password_field.click()
-        human_type(password_field, "your_password")
+        human_type(password_field, config.password)
         password_field.send_keys(Keys.RETURN)
     
-    driver.quit()
+    #driver.quit()
 
 if __name__=="__main__":
     asyncio.run(main())
